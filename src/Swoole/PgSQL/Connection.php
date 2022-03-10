@@ -83,7 +83,7 @@ final class Connection implements ConnectionInterface
      *
      * @param string|null $name
      */
-    public function lastInsertId(?string $name = null) : string
+    public function lastInsertId($name = null) : string
     {
         $result = ! empty($name)
             ? $this->query('SELECT CURRVAL(\'' . $name . '\')')
