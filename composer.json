@@ -1,0 +1,25 @@
+{
+    "name": "opsway/doctrine-dbal-swoole-pgsql-driver",
+    "description": "The PostgreSQL Swoole driver for Doctrine",
+    "minimum-stability": "stable",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Alexandr Vronskiy",
+            "email": "alvro@opsway.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "OpsWay\\Doctrine\\DBAL\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=8.0",
+        "beberlei/assert": "^3.3",
+        "doctrine/dbal": "^3.2"
+    },
+    "require-dev": {
+        "openswoole/ide-helper": "^4.9"
+    }
+}
