@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
-use Serializable;
 use Swoole\Timer;
 use Swoole\ConnectionPool;
 use Swoole\Coroutine as Co;
@@ -14,7 +13,7 @@ use function in_array;
 use function array_filter;
 
 /** @psalm-suppress MissingDependency, UndefinedClass */
-class DownscaleableConnectionPool extends ConnectionPool implements ConnectionPullInterface, Serializable
+class DownscaleableConnectionPool extends ConnectionPool implements ConnectionPullInterface
 {
     private const DEFAULT_POOL_SIZE        = 8;
     private const DOWNSCALE_TICK_FREQUENCY = 36000000; // 1 hour in milliseconds
@@ -153,15 +152,15 @@ class DownscaleableConnectionPool extends ConnectionPool implements ConnectionPu
      *
      * @see vendor/doctrine/dbal/src/Cache/QueryCacheProfile.php:127
      */
-    public function serialize() : ?string
+    public function __serialize() : array
     {
-        return null;
+        return [];
     }
 
     /**
      * @param string $data
      */
-    public function unserialize($data) : void
+    public function __unserialize($data) : void
     {
         // Do nothing
     }
