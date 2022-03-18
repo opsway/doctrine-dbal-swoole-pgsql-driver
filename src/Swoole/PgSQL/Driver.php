@@ -23,6 +23,10 @@ use function array_key_exists;
 /** @psalm-suppress UndefinedClass, DeprecatedInterface, MissingDependency */
 final class Driver extends AbstractPostgreSQLDriver
 {
+    public function __construct(private ?ConnectionPullInterface $pool = null)
+    {
+    }
+
     /**
      * {@inheritdoc}
      *
@@ -31,7 +35,7 @@ final class Driver extends AbstractPostgreSQLDriver
      */
     public function connect(array $params, $username = null, $password = null, array $driverOptions = []) : Connection
     {
-        $pool = $params['connectionPoll'] ?? null;
+        $pool = $this->pool;
         if (! $pool instanceof ConnectionPullInterface) {
             throw new DriverException('Connection pull should be initialized');
         }
