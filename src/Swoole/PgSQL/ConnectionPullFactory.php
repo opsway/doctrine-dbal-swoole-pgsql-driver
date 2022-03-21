@@ -8,7 +8,6 @@ use Psr\Container\ContainerInterface;
 
 /**
  * @psalm-consistent-constructor
- * @template TProduct
  */
 class ConnectionPullFactory
 {
@@ -30,20 +29,34 @@ class ConnectionPullFactory
 
     /**
      * @return mixed
-     * @psalm-return TProduct
      */
     public function __invoke(ContainerInterface $container)
     {
+        /** @psalm-suppress MixedAssignment */
         $config = $container->has('config') ? $container->get('config') : [];
+        /**
+         * @psalm-suppress MixedAssignment
+         * @psalm-suppress MixedArrayAccess
+         */
         $params = $config['doctrine']['connection'][$this->configKey]['params'] ?? [];
 
-        /** @var int|null $pullSize */
+        /**
+         * @var int|null $pullSize
+         * @psalm-suppress MixedArrayAccess
+         */
         $pullSize = $params['poolSize'] ?? null;
-        /** @var int|string|null $tickFrequency */
+        /**
+         * @var int|string|null $tickFrequency
+         * @psalm-suppress MixedArrayAccess
+         */
         $tickFrequency = $params['tickFrequency'] ?? null;
-        $connectionTtl = (int) ($params['connectionTtl'] ?? self::DEFAULT_CONNECTION_TTL) / Units::SECONDS;
+        /** @psalm-suppress MixedArrayAccess */
+        $connectionTtl = (int) ($params['connectionTtl'] ?? self::DEFAULT_CONNECTION_TTL) / 1000;
 
-        /** @psalm-suppress MissingDependency */
+        /**
+         * @psalm-suppress MissingDependency
+         * @psalm-suppress MixedArgument
+         */
         return new DownscaleableConnectionPool(
             static fn() : PsqlConnectionWrapper => Driver::createConnection(
                 Driver::generateDSN($params),
