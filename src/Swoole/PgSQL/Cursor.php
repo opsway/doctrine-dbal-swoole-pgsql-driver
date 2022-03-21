@@ -8,9 +8,9 @@ use Assert\Assertion;
 use BadMethodCallException;
 use Doctrine\DBAL\Connection;
 
-use function uniqid;
-use function sprintf;
 use function in_array;
+use function sprintf;
+use function uniqid;
 
 /**
  * @see Based on https://habr.com/ru/company/lamoda/blog/455571/
@@ -51,7 +51,13 @@ class Cursor
             $this->openCursor();
         }
 
-        if (in_array($direction, [self::DIRECTION_FORWARD, self::DIRECTION_BACKWARD, self::DIRECTION_ABSOLUTE, self::DIRECTION_RELATIVE], true)) {
+        if (
+            in_array(
+                $direction,
+                [self::DIRECTION_FORWARD, self::DIRECTION_BACKWARD, self::DIRECTION_ABSOLUTE, self::DIRECTION_RELATIVE],
+                true
+            )
+        ) {
             return sprintf('FETCH %s %d FROM %s', $direction, $count, $this->cursorName);
         }
 

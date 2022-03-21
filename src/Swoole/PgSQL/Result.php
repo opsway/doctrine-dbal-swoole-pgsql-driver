@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
-use Exception;
 use Doctrine\DBAL\Driver\Result as ResultInterface;
+use Exception;
 
 use const OPENSWOOLE_PGSQL_NUM;
 
@@ -22,7 +22,10 @@ class Result implements ResultInterface
         if (! $this->result) {
             throw new Exception('Result expecting been resource here');
         }
-        /** @psalm-var list<mixed>|false $result */
+        /**
+         * @psalm-var list<mixed>|false $result
+         * @psalm-suppress UndefinedConstant
+         */
         $result = $this->connection->fetchArray($this->result, resultType: OPENSWOOLE_PGSQL_NUM);
 
         return $result;

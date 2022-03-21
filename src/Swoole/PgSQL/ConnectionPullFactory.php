@@ -2,11 +2,8 @@
 
 declare(strict_types=1);
 
-namespace Boodmo\Marketplace\Shared\Infrastructure\Doctrine;
+namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
-use OpsWay\Doctrine\DBAL\Swoole\PgSQL\DownscaleableConnectionPool;
-use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Driver;
-use OpsWay\Doctrine\DBAL\Swoole\PgSQL\PsqlConnectionWrapper;
 use Psr\Container\ContainerInterface;
 
 /**

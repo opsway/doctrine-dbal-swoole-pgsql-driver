@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
-use Swoole\Timer;
 use Swoole\ConnectionPool;
 use Swoole\Coroutine as Co;
 use Swoole\Coroutine\Channel;
+use Swoole\Timer;
 
-use function in_array;
 use function array_filter;
+use function in_array;
 
 /** @psalm-suppress MissingDependency, UndefinedClass */
 class DownscaleableConnectionPool extends ConnectionPool implements ConnectionPullInterface

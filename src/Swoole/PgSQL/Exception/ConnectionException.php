@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception;
 
-use Throwable;
-use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Driver\Exception as DBALDriverException;
+use Doctrine\DBAL\Exception;
+use Throwable;
 
 /** @psalm-immutable */
 class ConnectionException extends Exception implements DBALDriverException

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
-use Exception;
-use Doctrine\DBAL\ParameterType;
-use OpsWay\Doctrine\DBAL\SQLParserUtils;
 use Doctrine\DBAL\Driver\Connection as ConnectionInterface;
+use Doctrine\DBAL\ParameterType;
+use Exception;
+use OpsWay\Doctrine\DBAL\SQLParserUtils;
 
 use function strlen;
 use function substr;
@@ -21,8 +21,6 @@ final class Connection implements ConnectionInterface
     /**
      * {@inheritdoc}
      *
-     * @param string $sql
-     *
      * @throws Exception
      */
     public function prepare(string $sql) : Statement
@@ -33,7 +31,9 @@ final class Connection implements ConnectionInterface
         $phPos = SQLParserUtils::getPlaceholderPositions($sql);
         foreach ($phPos as $pos) {
             $placeholder = '$' . $i;
-            $sql         = substr($sql, 0, (int) $pos + $posShift) . $placeholder . substr($sql, (int) $pos + $posShift + 1);
+            $sql         = substr($sql, 0, (int) $pos + $posShift)
+                . $placeholder
+                . substr($sql, (int) $pos + $posShift + 1);
             $posShift   += strlen($placeholder) - 1;
             $i++;
         }
@@ -65,8 +65,6 @@ final class Connection implements ConnectionInterface
 
     /**
      * {@inheritdoc}
-     *
-     * @param string $sql
      */
     public function exec(string $sql) : int
     {
