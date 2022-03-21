@@ -17,7 +17,8 @@
     "require": {
         "php": ">=8.0",
         "beberlei/assert": "^3.3",
-        "doctrine/dbal": "^3.2"
+        "doctrine/dbal": "^3.2",
+        "psr/container": "^1.0 || ^2.0"
     },
     "require-dev": {
         "openswoole/ide-helper": "^4.9"
