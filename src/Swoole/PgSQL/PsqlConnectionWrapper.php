@@ -7,16 +7,18 @@ namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 use ArrayAccess;
 use Swoole\Coroutine\PostgreSQL;
 
+use function mt_rand;
 use function time;
 use function uniqid;
-use function mt_rand;
 
+/** @psalm-suppress all */
 class PsqlConnectionWrapper implements ConnectionWrapperInterface
 {
     private int $lastInteraction;
     private string $id;
     public int $usedTimes = 1;
 
+    /** @psalm-suppress all */
     public function __construct(private ?PostgreSQL $connection, private int $ttl, private int $maxUsageTimes)
     {
         $this->lastInteraction = time();
@@ -80,7 +82,7 @@ class PsqlConnectionWrapper implements ConnectionWrapperInterface
         return match (true) {
             $row !== null && $resultType !== null => $this->connection->fetchArray($queryResult, $row, $resultType),
             $row !== null                         => $this->connection->fetchArray($queryResult, $row),
-            $resultType !== null                  => $this->connection->fetchArray($queryResult, null, result_type: $resultType),
+            $resultType !== null                  => $this->connection->fetchArray($queryResult, null, $resultType),
             default                               => $this->connection->fetchArray($queryResult)
         };
     }

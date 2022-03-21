@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
-use Exception;
 use ArrayAccess;
-use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Driver\Result as ResultInterface;
 use Doctrine\DBAL\Driver\Statement as StatementInterface;
+use Doctrine\DBAL\ParameterType;
+use Exception;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException as SwooleDriverException;
 
-use function uniqid;
-use function is_bool;
 use function is_array;
+use function is_bool;
 use function is_resource;
+use function uniqid;
 
 final class Statement implements StatementInterface
 {
@@ -90,29 +90,17 @@ final class Statement implements StatementInterface
         return new Result($this->connection, $result);
     }
 
-    /**
-     * @return int
-     */
     public function errorCode() : int
     {
         return $this->connection->errorCode();
     }
 
-    /**
-     * @return string
-     */
     public function errorInfo() : string
     {
         return $this->connection->error();
     }
 
-    /**
-     * @param mixed|null $value
-     * @param int        $type
-     *
-     * @return string|null
-     */
-    private function escapeValue(mixed $value, int $type = ParameterType::STRING): ?string
+    private function escapeValue(mixed $value, int $type = ParameterType::STRING) : ?string
     {
         if ($value !== null && (is_bool($value) || $type === ParameterType::BOOLEAN)) {
             return $value ? 'TRUE' : 'FALSE';

@@ -4,28 +4,29 @@ declare(strict_types=1);
 
 namespace OpsWay\Doctrine\DBAL;
 
-use Exception;
 use Doctrine\DBAL\Connection;
+//phpcs:ignore
 use Doctrine\DBAL\Types\Type;
 use Doctrine\DBAL\Types\Types;
+use Exception;
 
-use function key;
-use function ksort;
-use function count;
-use function is_int;
-use function strlen;
-use function strpos;
-use function substr;
-use function sprintf;
-use function implode;
 use function array_fill;
+use function array_fill_keys;
+use function array_key_exists;
 use function array_keys;
 use function array_merge;
 use function array_slice;
 use function array_values;
+use function count;
+use function implode;
+use function is_int;
+use function key;
+use function ksort;
 use function preg_match_all;
-use function array_fill_keys;
-use function array_key_exists;
+use function sprintf;
+use function strlen;
+use function strpos;
+use function substr;
 
 use const PREG_OFFSET_CAPTURE;
 
@@ -274,8 +275,12 @@ class SQLParserUtils
      * @psalm-param bool   $isParam
      * @psalm-param mixed  $defaultValue  An optional default value. If omitted, an exception is thrown
      */
-    private static function extractParam(string $paramName, mixed $paramsOrTypes, bool $isParam, mixed $defaultValue = null) : mixed
-    {
+    private static function extractParam(
+        string $paramName,
+        mixed $paramsOrTypes,
+        bool $isParam,
+        mixed $defaultValue = null
+    ) : mixed {
         if (array_key_exists($paramName, $paramsOrTypes)) {
             return $paramsOrTypes[$paramName];
         }

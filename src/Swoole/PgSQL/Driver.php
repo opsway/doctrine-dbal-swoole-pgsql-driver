@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
-use Throwable;
-use Swoole\Coroutine\PostgreSQL;
-use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\DBAL\Driver\AbstractPostgreSQLDriver;
-use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException;
+use Doctrine\DBAL\Exception as DBALException;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\ConnectionException;
+use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException;
+use Swoole\Coroutine\PostgreSQL;
+use Throwable;
 
 use function abs;
-use function trim;
-use function defer;
-use function usleep;
-use function implode;
-use function sprintf;
-use function is_resource;
 use function array_key_exists;
+use function defer;
+use function implode;
+use function is_resource;
+use function sprintf;
+use function trim;
+use function usleep;
 
 /** @psalm-suppress UndefinedClass, DeprecatedInterface, MissingDependency */
 final class Driver extends AbstractPostgreSQLDriver
@@ -54,7 +54,10 @@ final class Driver extends AbstractPostgreSQLDriver
                 $query        = $connect->query('SELECT 1');
                 $affectedRows = is_resource($query) ? $connect->affectedRows($query) : 0;
                 if ($affectedRows !== 1) {
-                    throw new ConnectionException('Connection ping failed. Trying reconnect (attempt ' . $i . '). Reason: ' . trim($connect->error()));
+                    throw new ConnectionException(
+                        'Connection ping failed. Trying reconnect (attempt ' . $i . '). Reason: '
+                        . trim($connect->error())
+                    );
                 }
 
                 break;
@@ -66,13 +69,17 @@ final class Driver extends AbstractPostgreSQLDriver
                     $pool->removeConnect($connect);
                     $connect = null;
                 }
-                $lastException = $e instanceof DBALException ? $e : new ConnectionException($e->getMessage(), (string) $errCode, '', (int) $e->getCode(), $e);
+                $lastException = $e instanceof DBALException
+                    ? $e
+                    : new ConnectionException($e->getMessage(), (string) $errCode, '', (int) $e->getCode(), $e);
                 /** @psalm-suppress ArgumentTypeCoercion */
                 usleep(abs($retryDelay) * 1000);  // Sleep ms after failure
             }
         }
         if (! $connect instanceof ConnectionWrapperInterface) {
-            $lastException instanceof Throwable ? throw $lastException : throw new ConnectionException('Connection could not be initiated');
+            $lastException instanceof Throwable
+                ? throw $lastException
+                : throw new ConnectionException('Connection could not be initiated');
         }
 
         /** @psalm-suppress MissingClosureReturnType,PossiblyNullReference,UnusedFunctionCall,UnusedVariable */
