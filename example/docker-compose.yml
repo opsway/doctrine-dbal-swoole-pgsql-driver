@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    volumes:
+      - ./../:/app
+    ports:
+      - 9501:9501
+    container_name: test_dbal_swoole_pgsql_driver
+  dbhost:
+    image: postgres:13
+    environment:
+      POSTGRES_PASSWORD: secret
+      POSTGRES_USER: user
+      POSTGRES_DB: mydb
+    container_name: test_dbal_swoole_pgsql_driver_db
