@@ -4,10 +4,22 @@ declare(strict_types=1);
 
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
-use Psr\Container\ContainerInterface;
-
 /**
- * @psalm-consistent-constructor
+ * @psalm-type ConnectionPullFactoryConfig = array{
+ *     dbname: 'mydb',
+ *     user: 'user',
+ *     password: 'secret',
+ *     host: 'localhost',
+ *     driverClass: class-string<\OpsWay\Doctrine\DBAL\Swoole\PgSQL\Driver>,
+ *     poolSize: 5,
+ *     tickFrequency: 60000,
+ *     connectionTtl: 60000,
+ *     usedTimes: 100,
+ *     retry: array{
+ *         max_attempts: 2,
+ *         delay: 1,
+ *     },
+ * }
  */
 class ConnectionPullFactory
 {
@@ -16,46 +28,28 @@ class ConnectionPullFactory
     // Allowed queries per connection
     public const DEFAULT_USED_TIMES = 0;
 
-    /** @var string */
-    private string $configKey;
-
     /**
-     * @param string $configKey
-     */
-    public function __construct($configKey = 'orm_default')
-    {
-        $this->configKey = $configKey;
-    }
-
-    /**
+     * @psalm-param ConnectionPullFactoryConfig $params
      * @return mixed
      */
-    public function __invoke(ContainerInterface $container)
+    public function __invoke(array $params)
     {
-        /** @psalm-suppress MixedAssignment */
-        $config = $container->has('config') ? $container->get('config') : [];
-        /**
-         * @psalm-suppress MixedAssignment
-         * @psalm-suppress MixedArrayAccess
-         */
-        $params = $config['doctrine']['connection'][$this->configKey]['params'] ?? [];
-
         /**
          * @var int|null $pullSize
-         * @psalm-suppress MixedArrayAccess
          */
         $pullSize = $params['poolSize'] ?? null;
         /**
          * @var int|string|null $tickFrequency
-         * @psalm-suppress MixedArrayAccess
          */
         $tickFrequency = $params['tickFrequency'] ?? null;
-        /** @psalm-suppress MixedArrayAccess */
+        /** @psalm-suppress RedundantCastGivenDocblockType */
         $connectionTtl = (int) ($params['connectionTtl'] ?? self::DEFAULT_CONNECTION_TTL) / 1000;
 
         /**
          * @psalm-suppress MissingDependency
          * @psalm-suppress MixedArgument
+         * @psalm-suppress RedundantCastGivenDocblockType
+         * @psalm-suppress RedundantCast
          */
         return new DownscaleableConnectionPool(
             static fn() : PsqlConnectionWrapper => Driver::createConnection(
