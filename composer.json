@@ -17,13 +17,11 @@
     "require": {
         "php": "^8.0",
         "beberlei/assert": "^3.3",
-        "doctrine/dbal": "^3.2",
-        "psr/container": "^1.0 || ^2.0"
+        "doctrine/dbal": "^3.2"
     },
     "require-dev": {
         "openswoole/ide-helper": "^4.9",
         "opsway/psr12-strict-coding-standard": "^0.7.0",
-        "lctrs/psalm-psr-container-plugin": "^1.6",
         "vimeo/psalm": "^4.22",
         "weirdan/doctrine-psalm-plugin": "^2.0"
     },
