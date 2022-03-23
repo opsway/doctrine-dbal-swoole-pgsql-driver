@@ -41,7 +41,7 @@ class Cursor
         private array $paramsTypes = [],
         private bool $withHold = false,
     ) {
-        $this->cursorName = $this->connection->quoteIdentifier(uniqid('cursor_', true));
+        $this->cursorName = $this->connection->quoteIdentifier(uniqid('cursor_'));
         Assertion::isInstanceOf($this->connection->getDriver(), Driver::class);
     }
 
