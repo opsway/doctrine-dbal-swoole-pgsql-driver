@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
 use Doctrine\DBAL\Driver\Result as ResultInterface;
-use Exception;
+use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException as SwooleDriverException;
+
+use function is_resource;
 
 use const OPENSWOOLE_PGSQL_NUM;
 
@@ -19,8 +21,8 @@ class Result implements ResultInterface
     /** {@inheritdoc} */
     public function fetchNumeric() : array|bool
     {
-        if (! $this->result) {
-            throw new Exception('Result expecting been resource here');
+        if (! is_resource($this->result)) {
+            throw SwooleDriverException::fromConnection($this->connection);
         }
         /**
          * @psalm-var list<mixed>|false $result
@@ -34,8 +36,8 @@ class Result implements ResultInterface
     /** {@inheritdoc} */
     public function fetchAssociative() : array|bool
     {
-        if (! $this->result) {
-            throw new Exception('Result expecting been resource here');
+        if (! is_resource($this->result)) {
+            throw SwooleDriverException::fromConnection($this->connection);
         }
         /** @psalm-var array<string,mixed>|false $result */
         $result = $this->connection->fetchAssoc($this->result);
@@ -91,8 +93,8 @@ class Result implements ResultInterface
     /** {@inheritdoc} */
     public function rowCount() : int
     {
-        if (! $this->result) {
-            throw new Exception('Result expecting been resource here');
+        if (! is_resource($this->result)) {
+            throw SwooleDriverException::fromConnection($this->connection);
         }
 
         return $this->connection->affectedRows($this->result);
@@ -101,8 +103,8 @@ class Result implements ResultInterface
     /** {@inheritdoc} */
     public function columnCount() : int
     {
-        if (! $this->result) {
-            throw new Exception('Result expecting been resource here');
+        if (! is_resource($this->result)) {
+            throw SwooleDriverException::fromConnection($this->connection);
         }
 
         return $this->connection->fieldCount($this->result);

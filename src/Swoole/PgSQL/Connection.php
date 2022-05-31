@@ -6,9 +6,11 @@ namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
 use Doctrine\DBAL\Driver\Connection as ConnectionInterface;
 use Doctrine\DBAL\ParameterType;
-use Exception;
 use OpsWay\Doctrine\DBAL\SQLParserUtils;
+use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\ConnectionException;
+use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException as SwooleDriverException;
 
+use function is_resource;
 use function strlen;
 use function substr;
 
@@ -21,7 +23,7 @@ final class Connection implements ConnectionInterface
     /**
      * {@inheritdoc}
      *
-     * @throws Exception
+     * @throws SwooleDriverException
      */
     public function prepare(string $sql) : Statement
     {
@@ -46,8 +48,11 @@ final class Connection implements ConnectionInterface
      */
     public function query(string $sql) : Result
     {
-        /** @var resource $resource */
         $resource = $this->connection->query($sql);
+
+        if (! is_resource($resource)) {
+            throw ConnectionException::fromConnection($this->connection);
+        }
 
         return new Result($this->connection, $resource);
     }
@@ -69,11 +74,12 @@ final class Connection implements ConnectionInterface
     public function exec(string $sql) : int
     {
         $query = $this->connection->query($sql);
-        if ($query !== false) {
-            return $this->connection->affectedRows($query);
+
+        if (! is_resource($query)) {
+            throw ConnectionException::fromConnection($this->connection);
         }
 
-        return 0;
+        return $this->connection->affectedRows($query);
     }
 
     /**

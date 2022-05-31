@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
-use ArrayAccess;
 use Doctrine\DBAL\Driver\Result as ResultInterface;
 use Doctrine\DBAL\Driver\Statement as StatementInterface;
 use Doctrine\DBAL\ParameterType;
-use Exception;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException as SwooleDriverException;
 
 use function is_array;
@@ -25,7 +23,7 @@ final class Statement implements StatementInterface
     {
         $this->key = uniqid('stmt_', true);
         if ($this->connection->prepare($this->key, $sql) === false) {
-            throw new Exception($this->errorInfo());
+            throw SwooleDriverException::fromConnection($this->connection);
         }
     }
 
@@ -58,7 +56,7 @@ final class Statement implements StatementInterface
 
     /**
      * @param mixed|null $params
-     * @throws Exception
+     * @throws SwooleDriverException
      * @psalm-suppress ImplementedReturnTypeMismatch
      */
     public function execute($params = []) : ResultInterface
@@ -75,16 +73,7 @@ final class Statement implements StatementInterface
 
         $result = $this->connection->execute($this->key, $mergedParams);
         if (! is_resource($result)) {
-            /** @var ArrayAccess $resultDiag */
-            $resultDiag = $this->connection->resultDiag() ?? [];
-            $sqlstate   = (string) ($resultDiag['sqlstate'] ?? '');
-
-            throw new SwooleDriverException(
-                $this->errorInfo(),
-                (string) $this->errorCode(),
-                $sqlstate,
-                $this->errorCode(),
-            );
+            throw SwooleDriverException::fromConnection($this->connection);
         }
 
         return new Result($this->connection, $result);
