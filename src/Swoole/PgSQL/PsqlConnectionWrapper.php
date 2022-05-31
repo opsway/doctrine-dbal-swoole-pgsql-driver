@@ -7,6 +7,9 @@ namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 use ArrayAccess;
 use Swoole\Coroutine\PostgreSQL;
 
+use function count;
+use function is_array;
+use function is_resource;
 use function mt_rand;
 use function time;
 use function uniqid;
@@ -60,8 +63,13 @@ class PsqlConnectionWrapper implements ConnectionWrapperInterface
     public function query(string $sql)
     {
         $this->usedTimes++;
+        $result = $this->connection->query($sql);
 
-        return $this->connection->query($sql);
+        if (! is_resource($result)) {
+            $result = false;
+        }
+
+        return $result;
     }
 
     /** @param resource $queryResult */
@@ -73,7 +81,13 @@ class PsqlConnectionWrapper implements ConnectionWrapperInterface
     /** @param resource $queryResult */
     public function fetchAssoc($queryResult) : array|bool
     {
-        return $this->connection->fetchAssoc($queryResult);
+        $result = $this->connection->fetchAssoc($queryResult);
+
+        if (is_array($result) && count($result) === 0) {
+            $result = false;
+        }
+
+        return $result;
     }
 
     /** @param resource $queryResult*/

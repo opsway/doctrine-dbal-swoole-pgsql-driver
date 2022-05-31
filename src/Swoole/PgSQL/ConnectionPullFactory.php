@@ -20,6 +20,7 @@ namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
  *         delay: 1,
  *     },
  * }
+ * @psalm-suppress MissingDependency, UndefinedClass
  */
 class ConnectionPullFactory
 {
@@ -30,9 +31,8 @@ class ConnectionPullFactory
 
     /**
      * @psalm-param ConnectionPullFactoryConfig $params
-     * @return mixed
      */
-    public function __invoke(array $params)
+    public function __invoke(array $params) : DownscaleableConnectionPool
     {
         /**
          * @var int|null $pullSize

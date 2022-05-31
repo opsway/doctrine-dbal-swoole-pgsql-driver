@@ -11,6 +11,8 @@ use Throwable;
 /** @psalm-immutable */
 class DriverException extends Exception implements DBALDriverException
 {
+    use ExceptionFromConnectionTrait;
+
     public function __construct(
         string $message = '',
         private ?string $errorCode = null,
