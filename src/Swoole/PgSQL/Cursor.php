@@ -94,11 +94,4 @@ class Cursor
         $this->connection->executeStatement('CLOSE ' . $this->cursorName);
         $this->isOpen = false;
     }
-
-    public function __destruct()
-    {
-        if ($this->isOpen) {
-            $this->close();
-        }
-    }
 }
