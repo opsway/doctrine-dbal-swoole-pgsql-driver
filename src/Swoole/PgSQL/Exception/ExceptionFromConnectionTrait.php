@@ -5,22 +5,22 @@ declare(strict_types=1);
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception;
 
 use ArrayAccess;
-use OpsWay\Doctrine\DBAL\Swoole\PgSQL\ConnectionWrapperInterface;
+use Swoole\Coroutine\PostgreSQL;
 
 /** @psalm-immutable */
 trait ExceptionFromConnectionTrait
 {
-    public static function fromConnection(ConnectionWrapperInterface $connection) : self
+    public static function fromConnection(PostgreSQL $connection) : self
     {
         /** @var ArrayAccess $resultDiag */
-        $resultDiag = $connection->resultDiag() ?? [];
+        $resultDiag = $connection->resultDiag ?? [];
         $sqlstate   = (string) ($resultDiag['sqlstate'] ?? '');
 
         return new self(
-            $connection->error(),
-            (string) $connection->errorCode(),
+            (string) $connection->error,
+            (string) $connection->errCode,
             $sqlstate,
-            $connection->errorCode(),
+            (int) $connection->errCode,
         );
     }
 }

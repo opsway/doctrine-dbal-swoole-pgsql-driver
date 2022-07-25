@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c39204fa88ae5e3f7648c52328679550",
+    "content-hash": "1aed5eb8431bcc9531557025833a8808",
     "packages": [
         {
             "name": "beberlei/assert",
@@ -1353,17 +1353,20 @@
         },
         {
             "name": "openswoole/ide-helper",
-            "version": "4.10.2",
+            "version": "4.11.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/openswoole/ide-helper.git",
-                "reference": "26667488bf23c9359b6b5ee8bd96db425d8358f9"
+                "reference": "80ec936d4341f505edef6054211379616e6a2529"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/openswoole/ide-helper/zipball/26667488bf23c9359b6b5ee8bd96db425d8358f9",
-                "reference": "26667488bf23c9359b6b5ee8bd96db425d8358f9",
+                "url": "https://api.github.com/repos/openswoole/ide-helper/zipball/80ec936d4341f505edef6054211379616e6a2529",
+                "reference": "80ec936d4341f505edef6054211379616e6a2529",
                 "shasum": ""
+            },
+            "require": {
+                "php": ">=7.4"
             },
             "require-dev": {
                 "friendsofphp/php-cs-fixer": "^3.3"
@@ -1376,15 +1379,15 @@
             "authors": [
                 {
                     "name": "Open Swoole Group",
-                    "email": "hello@swoole.co.uk"
+                    "email": "hello@openswoole.com"
                 }
             ],
             "description": "IDE help files for Open Swoole.",
             "support": {
                 "issues": "https://github.com/openswoole/ide-helper/issues",
-                "source": "https://github.com/openswoole/ide-helper/tree/4.10.2"
+                "source": "https://github.com/openswoole/ide-helper/tree/4.11.4"
             },
-            "time": "2022-02-25T15:08:21+00:00"
+            "time": "2022-05-24T11:03:39+00:00"
         },
         {
             "name": "opsway/psr12-strict-coding-standard",
@@ -2825,7 +2828,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "openswoole/ide-helper": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {

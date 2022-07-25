@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
+use Swoole\Coroutine\PostgreSQL;
+
 /**
- * @psalm-type ConnectionPullFactoryConfig = array{
+ * @psalm-type ConnectionPoolFactoryConfig = array{
  *     dbname: 'mydb',
  *     user: 'user',
  *     password: 'secret',
@@ -22,28 +24,27 @@ namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
  * }
  * @psalm-suppress MissingDependency, UndefinedClass
  */
-class ConnectionPullFactory
+class ConnectionPoolFactory
 {
-    // TTL in milliseconds
-    public const DEFAULT_CONNECTION_TTL = 60000;
+    // Allowed IDLE time in seconds
+    public const DEFAULT_CONNECTION_TTL = 60;
     // Allowed queries per connection
-    public const DEFAULT_USED_TIMES = 0;
+    public const DEFAULT_USAGE_LIMIT = 0;
 
     /**
-     * @psalm-param ConnectionPullFactoryConfig $params
+     * @psalm-param ConnectionPoolFactoryConfig $params
      */
-    public function __invoke(array $params) : DownscaleableConnectionPool
+    public function __invoke(array $params) : ConnectionPoolInterface
     {
         /**
          * @var int|null $pullSize
          */
         $pullSize = $params['poolSize'] ?? null;
-        /**
-         * @var int|string|null $tickFrequency
-         */
-        $tickFrequency = $params['tickFrequency'] ?? null;
+        /** @var int|string $usageLimit */
+        $usageLimit = $params['usedTimes'] ?? self::DEFAULT_USAGE_LIMIT;
+
         /** @psalm-suppress RedundantCastGivenDocblockType */
-        $connectionTtl = (int) ($params['connectionTtl'] ?? self::DEFAULT_CONNECTION_TTL) / 1000;
+        $connectionTtl = (int) ($params['connectionTtl'] ?? self::DEFAULT_CONNECTION_TTL);
 
         /**
          * @psalm-suppress MissingDependency
@@ -51,14 +52,11 @@ class ConnectionPullFactory
          * @psalm-suppress RedundantCastGivenDocblockType
          * @psalm-suppress RedundantCast
          */
-        return new DownscaleableConnectionPool(
-            static fn() : PsqlConnectionWrapper => Driver::createConnection(
-                Driver::generateDSN($params),
-                (int) $connectionTtl, // TTL in seconds
-                (int) ($params['usedTimes'] ?? self::DEFAULT_USED_TIMES)
-            ),
+        return new ConnectionPool(
+            static fn() : PostgreSQL => Driver::createConnection(Driver::generateDSN($params)),
             $pullSize,
-            tickFrequency: $tickFrequency ? (int) $tickFrequency : null
+            $connectionTtl,
+            (int) $usageLimit
         );
     }
 }

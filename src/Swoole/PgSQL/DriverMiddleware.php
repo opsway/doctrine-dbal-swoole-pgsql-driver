@@ -9,7 +9,7 @@ use Doctrine\DBAL\Driver\Middleware as MiddlewareInterface;
 
 final class DriverMiddleware implements MiddlewareInterface
 {
-    public function __construct(private ConnectionPullInterface $connectionPool)
+    public function __construct(private ConnectionPoolInterface $connectionPool)
     {
     }
 

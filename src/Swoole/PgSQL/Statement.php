@@ -8,6 +8,7 @@ use Doctrine\DBAL\Driver\Result as ResultInterface;
 use Doctrine\DBAL\Driver\Statement as StatementInterface;
 use Doctrine\DBAL\ParameterType;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException as SwooleDriverException;
+use Swoole\Coroutine\PostgreSQL;
 
 use function is_array;
 use function is_bool;
@@ -19,7 +20,7 @@ final class Statement implements StatementInterface
     private string $key;
     private array $params = [];
 
-    public function __construct(private ConnectionWrapperInterface $connection, string $sql)
+    public function __construct(private PostgreSQL $connection, string $sql, private ?ConnectionStats $stats)
     {
         $this->key = uniqid('stmt_', true);
         if ($this->connection->prepare($this->key, $sql) === false) {
@@ -72,6 +73,9 @@ final class Statement implements StatementInterface
         }
 
         $result = $this->connection->execute($this->key, $mergedParams);
+        if ($this->stats instanceof ConnectionStats) {
+            $this->stats->counter++;
+        }
         if (! is_resource($result)) {
             throw SwooleDriverException::fromConnection($this->connection);
         }
@@ -81,12 +85,12 @@ final class Statement implements StatementInterface
 
     public function errorCode() : int
     {
-        return $this->connection->errorCode();
+        return (int) $this->connection->errCode;
     }
 
     public function errorInfo() : string
     {
-        return $this->connection->error();
+        return (string) $this->connection->error;
     }
 
     private function escapeValue(mixed $value, int $type = ParameterType::STRING) : ?string

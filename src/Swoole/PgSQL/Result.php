@@ -6,7 +6,10 @@ namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
 use Doctrine\DBAL\Driver\Result as ResultInterface;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException as SwooleDriverException;
+use Swoole\Coroutine\PostgreSQL;
 
+use function count;
+use function is_array;
 use function is_resource;
 
 use const OPENSWOOLE_PGSQL_NUM;
@@ -14,7 +17,7 @@ use const OPENSWOOLE_PGSQL_NUM;
 class Result implements ResultInterface
 {
     /** @param resource|null $result */
-    public function __construct(private ConnectionWrapperInterface $connection, private $result)
+    public function __construct(private PostgreSQL $connection, private $result)
     {
     }
 
@@ -28,7 +31,7 @@ class Result implements ResultInterface
          * @psalm-var list<mixed>|false $result
          * @psalm-suppress UndefinedConstant
          */
-        $result = $this->connection->fetchArray($this->result, resultType: OPENSWOOLE_PGSQL_NUM);
+        $result = $this->connection->fetchArray($this->result, null, OPENSWOOLE_PGSQL_NUM);
 
         return $result;
     }
@@ -40,7 +43,10 @@ class Result implements ResultInterface
             throw SwooleDriverException::fromConnection($this->connection);
         }
         /** @psalm-var array<string,mixed>|false $result */
-        $result = $this->connection->fetchAssoc($this->result);
+        $result = $this->connection->fetchAssoc($this->result, null);
+        if (is_array($result) && count($result) === 0) {
+            $result = false;
+        }
 
         return $result;
     }
@@ -97,7 +103,7 @@ class Result implements ResultInterface
             throw SwooleDriverException::fromConnection($this->connection);
         }
 
-        return $this->connection->affectedRows($this->result);
+        return (int) $this->connection->affectedRows($this->result);
     }
 
     /** {@inheritdoc} */
@@ -107,7 +113,7 @@ class Result implements ResultInterface
             throw SwooleDriverException::fromConnection($this->connection);
         }
 
-        return $this->connection->fieldCount($this->result);
+        return (int) $this->connection->fieldCount($this->result);
     }
 
     /** {@inheritdoc} */
