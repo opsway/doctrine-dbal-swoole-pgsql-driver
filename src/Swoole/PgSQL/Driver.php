@@ -5,25 +5,18 @@ declare(strict_types=1);
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
 use Doctrine\DBAL\Driver\AbstractPostgreSQLDriver;
-use Doctrine\DBAL\Exception as DBALException;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\ConnectionException;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException;
 use Swoole\Coroutine\PostgreSQL;
-use Throwable;
 
-use function abs;
 use function array_key_exists;
-use function defer;
 use function implode;
-use function is_resource;
 use function sprintf;
-use function trim;
-use function usleep;
 
 /** @psalm-suppress UndefinedClass, DeprecatedInterface, MissingDependency */
 final class Driver extends AbstractPostgreSQLDriver
 {
-    public function __construct(private ?ConnectionPullInterface $pool = null)
+    public function __construct(private ?ConnectionPoolInterface $pool = null)
     {
     }
 
@@ -35,58 +28,13 @@ final class Driver extends AbstractPostgreSQLDriver
      */
     public function connect(array $params, $username = null, $password = null, array $driverOptions = []) : Connection
     {
-        $pool = $this->pool;
-        if (! $pool instanceof ConnectionPullInterface) {
+        if (! $this->pool instanceof ConnectionPoolInterface) {
             throw new DriverException('Connection pull should be initialized');
         }
         $retryMaxAttempts = (int) ($params['retry']['max_attempts'] ?? 1);
         $retryDelay       = (int) ($params['retry']['delay'] ?? 0);
-        $lastException    = null;
-        $connect          = null;
-        for ($i = 0; $i < $retryMaxAttempts; $i++) {
-            try {
-                /** @psalm-suppress MissingDependency */
-                $connect = $pool->get(2);
-                if (! $connect instanceof ConnectionWrapperInterface) {
-                    throw new DriverException('No connect available in pull');
-                }
-                /** @var resource|bool $query */
-                $query        = $connect->query('SELECT 1');
-                $affectedRows = is_resource($query) ? $connect->affectedRows($query) : 0;
-                if ($affectedRows !== 1) {
-                    throw new ConnectionException(
-                        'Connection ping failed. Trying reconnect (attempt ' . $i . '). Reason: '
-                        . trim($connect->error())
-                    );
-                }
 
-                break;
-            } catch (Throwable $e) {
-                $errCode = '';
-                if ($connect instanceof ConnectionWrapperInterface) {
-                    $errCode = $connect->errorCode();
-                    /** @psalm-suppress MissingDependency */
-                    $pool->removeConnect($connect);
-                    $connect = null;
-                }
-                $lastException = $e instanceof DBALException
-                    ? $e
-                    : new ConnectionException($e->getMessage(), (string) $errCode, '', (int) $e->getCode(), $e);
-                /** @psalm-suppress ArgumentTypeCoercion */
-                usleep(abs($retryDelay) * 1000);  // Sleep ms after failure
-            }
-        }
-        if (! $connect instanceof ConnectionWrapperInterface) {
-            $lastException instanceof Throwable
-                ? throw $lastException
-                : throw new ConnectionException('Connection could not be initiated');
-        }
-
-        /** @psalm-suppress MissingClosureReturnType,PossiblyNullReference,UnusedFunctionCall,UnusedVariable */
-        defer(static fn() => $pool->put($connect));
-
-        /** @psalm-suppress  PossiblyNullArgument */
-        return new Connection($connect);
+        return new Connection($this->pool, $retryDelay, $retryMaxAttempts);
     }
 
     /**
@@ -94,14 +42,14 @@ final class Driver extends AbstractPostgreSQLDriver
      *
      * @throws ConnectionException
      */
-    public static function createConnection(string $dsn, int $ttl, int $maxUsageTimes) : PsqlConnectionWrapper
+    public static function createConnection(string $dsn) : PostgreSQL
     {
         $pgsql = new PostgreSQL();
         if (! $pgsql->connect($dsn)) {
             throw new ConnectionException(sprintf('Failed to connect: %s', (string) ($pgsql->error ?? 'Unknown')));
         }
 
-        return new PsqlConnectionWrapper($pgsql, $ttl, $maxUsageTimes);
+        return $pgsql;
     }
 
     /**

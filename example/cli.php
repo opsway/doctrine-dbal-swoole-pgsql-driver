@@ -20,7 +20,7 @@ $connectionParams = [
         'delay' => 1, // after this time
     ]
 ];
-$pool = (new \OpsWay\Doctrine\DBAL\Swoole\PgSQL\ConnectionPullFactory())($connectionParams);
+$pool = (new \OpsWay\Doctrine\DBAL\Swoole\PgSQL\ConnectionPoolFactory())($connectionParams);
 $configuration = new \Doctrine\DBAL\Configuration();
 $configuration->setMiddlewares(
     [new \OpsWay\Doctrine\DBAL\Swoole\PgSQL\DriverMiddleware($pool)]

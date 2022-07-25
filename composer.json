@@ -20,7 +20,7 @@
         "doctrine/dbal": "^3.2"
     },
     "require-dev": {
-        "openswoole/ide-helper": "^4.9",
+        "openswoole/ide-helper": "^v4.10.0.x-dev",
         "opsway/psr12-strict-coding-standard": "^0.7.0",
         "vimeo/psalm": "^4.22",
         "weirdan/doctrine-psalm-plugin": "^2.0"
