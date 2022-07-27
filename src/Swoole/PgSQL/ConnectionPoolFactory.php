@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
+use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException;
 use Swoole\Coroutine\PostgreSQL;
 
 /**
@@ -37,9 +38,9 @@ class ConnectionPoolFactory
     public function __invoke(array $params) : ConnectionPoolInterface
     {
         /**
-         * @var int|null $pullSize
+         * @var int $pullSize
          */
-        $pullSize = $params['poolSize'] ?? null;
+        $pullSize = $params['poolSize'] ?? throw new DriverException('poolSize required for connectionPool');
         /** @var int|string $usageLimit */
         $usageLimit = $params['usedTimes'] ?? self::DEFAULT_USAGE_LIMIT;
 

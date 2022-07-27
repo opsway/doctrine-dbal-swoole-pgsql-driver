@@ -17,6 +17,7 @@ use function time;
 final class ConnectionPool implements ConnectionPoolInterface
 {
     private ?Channel $pool = null;
+    /** @psalm-var WeakMap<PostgreSQL, ConnectionStats> $map */
     private ?WeakMap $map  = null;
 
     public function __construct(
@@ -29,16 +30,23 @@ final class ConnectionPool implements ConnectionPoolInterface
             throw new DriverException('Expected, connection pull size > 0');
         }
         $this->pool = new Channel($this->size);
-        $this->map  = new WeakMap();
+        /** @psalm-suppress PropertyTypeCoercion */
+        $this->map = new WeakMap();
     }
 
-    /** @psalm-return array{0 : PostgreSQL|null, 1 : ConnectionStats|null } */
+    /** @psalm-return array{PostgreSQL|null, ConnectionStats|null } */
     public function get(float $timeout = -1) : array
     {
+        /** Pool was closed */
+        if (! $this->map || ! $this->pool) {
+            throw new DriverException('ConnectionPool was closed');
+        }
+        /** @var PostgreSQL|null $connection */
         $connection = $this->pool->pop($timeout);
         if (! $connection instanceof PostgreSQL) {
             /** try to fill pull with new connect */
             $this->make();
+            /** @var PostgreSQL|null $connection */
             $connection = $this->pool->pop($timeout);
         }
         if (! $connection instanceof PostgreSQL) {
@@ -53,6 +61,10 @@ final class ConnectionPool implements ConnectionPoolInterface
 
     public function put(PostgreSQL $connection) : void
     {
+        /** Pool was closed */
+        if (! $this->map || ! $this->pool) {
+            return;
+        }
         if (! $this->map->offsetExists($connection)) {
             return;
         }
@@ -61,7 +73,6 @@ final class ConnectionPool implements ConnectionPoolInterface
 
             return;
         }
-        /** @psalm-var ConnectionStats|null $stats */
         $stats = $this->map[$connection] ?? null;
         if (! $stats || $stats->isOverdue()) {
             $this->remove($connection);
@@ -73,6 +84,10 @@ final class ConnectionPool implements ConnectionPoolInterface
 
     public function close() : void
     {
+        /** Pool was closed */
+        if (! $this->map || ! $this->pool) {
+            return;
+        }
         $this->pool->close();
         $this->pool = null;
         $this->map  = null;
@@ -80,7 +95,12 @@ final class ConnectionPool implements ConnectionPoolInterface
 
     public function capacity() : int
     {
-        return $this->pool->capacity;
+        return (int) $this->map?->count();
+    }
+
+    public function length() : int
+    {
+        return (int) $this->pool?->length();
     }
 
     /**
@@ -103,21 +123,31 @@ final class ConnectionPool implements ConnectionPoolInterface
 
     private function remove(PostgreSQL $connection) : void
     {
+        /** Pool was closed */
+        if (! $this->map || ! $this->pool) {
+            return;
+        }
         $this->map->offsetUnset($connection);
         unset($connection);
     }
 
     private function make() : void
     {
-        if ($this->pool->capacity === $this->map->count()) {
+        /** Pool was closed */
+        if (! $this->map || ! $this->pool) {
+            return;
+        }
+        if ($this->pool->capacity === $this->capacity()) {
             return;
         }
         try {
+            /** @var PostgreSQL $connection */
             $connection = ($this->constructor)();
         } catch (Throwable) {
             throw new Exception('Could not initialize connection with constructor');
         }
         $this->map[$connection] = new ConnectionStats(time(), 1, $this->connectionTtl, $this->connectionUseLimit);
-        $this->put($connection);
+        /** @psalm-suppress PossiblyNullReference */
+        $this->pool->push($connection);
     }
 }

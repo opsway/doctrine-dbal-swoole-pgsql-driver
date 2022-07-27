@@ -14,4 +14,6 @@ services:
       POSTGRES_PASSWORD: secret
       POSTGRES_USER: user
       POSTGRES_DB: mydb
+    ports:
+      - 5432:5432  
     container_name: test_dbal_swoole_pgsql_driver_db

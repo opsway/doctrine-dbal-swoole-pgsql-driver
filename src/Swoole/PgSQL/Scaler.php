@@ -15,7 +15,7 @@ class Scaler
 
     private ?int $timerId = null;
 
-    public function __construct(private ConnectionPoolInterface $pool, private ?int $tickFrequency)
+    public function __construct(private ConnectionPoolInterface $pool, private int $tickFrequency = self::DOWNSCALE_TICK_FREQUENCY)
     {
     }
 
@@ -25,25 +25,25 @@ class Scaler
             return;
         }
         $this->timerId = Timer::tick(
-            $this->tickFrequency ?? self::DOWNSCALE_TICK_FREQUENCY,
+            $this->tickFrequency,
             fn() => $this->downscale()
         ) ?: null;
     }
 
+    /** @psalm-suppress UnusedVariable */
     private function downscale() : void
     {
-        $poolCapacity = $this->pool->capacity();
+        $poolLength = $this->pool->length();
         /** @psalm-var  PostgreSQL[] $connections */
         $connections = [];
-        while ($poolCapacity > 0) {
-            /** @psalm-suppress UnusedVariable */
-            [$connection, $connectionStats] = $this->pool->get();
-            /** connection never null if poll capacity > 0 */
+        while ($poolLength > 0) {
+            [$connection, $connectionStats] = $this->pool->get($this->tickFrequency / 1000);
+            /** connection never null if pool capacity > 0 */
             if (! $connection) {
                 return;
             }
             $connections[] = $connection;
-            $poolCapacity--;
+            $poolLength--;
         }
         array_map(fn(PostgreSQL $connection) => $this->pool->put($connection), $connections);
     }
