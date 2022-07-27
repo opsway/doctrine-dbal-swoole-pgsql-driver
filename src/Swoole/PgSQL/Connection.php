@@ -17,6 +17,7 @@ use WeakMap;
 
 use function defer;
 use function is_resource;
+use function sleep;
 use function strlen;
 use function substr;
 use function time;
@@ -26,11 +27,22 @@ final class Connection implements ConnectionInterface
 {
     /** @psalm-var array<int, PostgreSQL>  */
     private array $internalStorage = [];
+    /** @psalm-var WeakMap<PostgreSQL, ConnectionStats> $statsStorage */
     private WeakMap $statsStorage;
 
-    public function __construct(private ConnectionPool $pool, private int $retryDelay, private int $maxAttempts)
-    {
+    public function __construct(
+        private ConnectionPoolInterface $pool,
+        private int $retryDelay,
+        private int $maxAttempts,
+        private int $connectionDelay,
+    ) {
+        /** @psalm-suppress PropertyTypeCoercion */
         $this->statsStorage = new WeakMap();
+        /** Outside of Coroutine Co::getCid() = -1 */
+        if (Co::getCid() < 1) {
+            return;
+        }
+        /** @psalm-suppress UnusedFunctionCall */
         defer(fn () => $this->onDefer());
     }
 
@@ -168,16 +180,18 @@ final class Connection implements ConnectionInterface
             $lastException = null;
             for ($i = 0; $i < $this->maxAttempts; $i++) {
                 try {
-                    /** @psalm-suppress MissingDependency */
-                    [$connection, $stats] = $this->pool->get(2);
+                    [$connection, $stats] = $this->pool->get($this->connectionDelay);
                     if (! $connection instanceof PostgreSQL) {
                         throw new DriverException('No connect available in pull');
+                    }
+                    if (! $stats instanceof ConnectionStats) {
+                        throw new DriverException('Provided connect is corrupted');
                     }
                     /** @var resource|bool $query */
                     $query        = $connection->query('SELECT 1');
                     $affectedRows = is_resource($query) ? (int) $connection->affectedRows($query) : 0;
                     if ($affectedRows !== 1) {
-                        $errCode = trim($connection->errCode);
+                        $errCode = trim((string) $connection->errCode);
                         throw new ConnectionException(
                             "Connection ping failed. Trying reconnect (attempt $i). Reason: $errCode"
                         );
@@ -189,13 +203,13 @@ final class Connection implements ConnectionInterface
                 } catch (Throwable $e) {
                     $errCode = '';
                     if ($connection instanceof PostgreSQL) {
-                        $errCode    = $connection->errCode;
+                        $errCode    = (int) $connection->errCode;
                         $connection = null;
                     }
                     $lastException = $e instanceof DBALException
                         ? $e
                         : new ConnectionException($e->getMessage(), (string) $errCode, '', (int) $e->getCode(), $e);
-                    Co::sleep($this->retryDelay);  // Sleep s after failure
+                    $this->sleep($this->retryDelay);  // Sleep s after failure
                 }
             }
             if (! $connection instanceof PostgreSQL) {
@@ -215,7 +229,7 @@ final class Connection implements ConnectionInterface
 
     private function onDefer() : void
     {
-        $connection = $this->internalStorage[Co::getCid()] ?: null;
+        $connection = $this->internalStorage[Co::getCid()] ?? null;
         if (! $connection instanceof PostgreSQL) {
             return;
         }
@@ -224,7 +238,19 @@ final class Connection implements ConnectionInterface
             $stats->lastInteraction = time();
         }
         $this->pool->put($connection);
+        /** @psalm-suppress MixedArrayOffset */
         unset($this->internalStorage[Co::getCid()]);
         $this->statsStorage->offsetUnset($connection);
+    }
+
+    private function sleep(int $seconds) : void
+    {
+        if (Co::getCid() > 0) {
+            Co::sleep($seconds);
+
+            return;
+        }
+        /** @psalm-suppress ArgumentTypeCoercion */
+        sleep($seconds);
     }
 }

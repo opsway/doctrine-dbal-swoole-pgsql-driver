@@ -31,10 +31,11 @@ final class Driver extends AbstractPostgreSQLDriver
         if (! $this->pool instanceof ConnectionPoolInterface) {
             throw new DriverException('Connection pull should be initialized');
         }
-        $retryMaxAttempts = (int) ($params['retry']['max_attempts'] ?? 1);
+        $retryMaxAttempts = (int) ($params['retry']['maxAttempts'] ?? 1);
         $retryDelay       = (int) ($params['retry']['delay'] ?? 0);
+        $connectionDelay  = (int) ($params['connectionDelay'] ?? 0);
 
-        return new Connection($this->pool, $retryDelay, $retryMaxAttempts);
+        return new Connection($this->pool, $retryDelay, $retryMaxAttempts, $connectionDelay);
     }
 
     /**

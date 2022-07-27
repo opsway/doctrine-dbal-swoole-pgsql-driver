@@ -18,11 +18,12 @@ class ConnectionStats
 
     public function isOverdue() : bool
     {
-        return match (true) {
-            ! $this->counterLimit && ! $this->ttl,
-            $this->counterLimit && $this->counterLimit > $this->counter,
-            $this->ttl && time() - $this->lastInteraction > $this->ttl => false,
-            default                                                    => true
-        };
+        if (! $this->counterLimit && ! $this->ttl) {
+            return false;
+        }
+        $counterOverflow = $this->counterLimit !== null && $this->counter > $this->counterLimit;
+        $ttlOverdue      = $this->ttl !== null && time() - $this->lastInteraction > $this->ttl;
+
+        return $counterOverflow || $ttlOverdue;
     }
 }
