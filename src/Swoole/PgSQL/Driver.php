@@ -13,6 +13,8 @@ use function array_key_exists;
 use function implode;
 use function sprintf;
 
+use const FILTER_VALIDATE_BOOLEAN;
+
 /** @psalm-suppress UndefinedClass, DeprecatedInterface, MissingDependency */
 final class Driver extends AbstractPostgreSQLDriver
 {
@@ -31,11 +33,13 @@ final class Driver extends AbstractPostgreSQLDriver
         if (! $this->pool instanceof ConnectionPoolInterface) {
             throw new DriverException('Connection pull should be initialized');
         }
-        $retryMaxAttempts = (int) ($params['retry']['maxAttempts'] ?? 1);
-        $retryDelay       = (int) ($params['retry']['delay'] ?? 0);
-        $connectionDelay  = (int) ($params['connectionDelay'] ?? 0);
+        $retryMaxAttempts   = (int) ($params['retry']['maxAttempts'] ?? 1);
+        $retryDelay         = (int) ($params['retry']['delay'] ?? 0);
+        $connectionDelay    = (int) ($params['connectionDelay'] ?? 0);
+        $usePool            =  filter_var($params['useConnectionPool'], FILTER_VALIDATE_BOOLEAN);
+        $connectConstructor = $usePool ? null : static fn() : PostgreSQL => self::createConnection(self::generateDSN($params));
 
-        return new Connection($this->pool, $retryDelay, $retryMaxAttempts, $connectionDelay);
+        return new Connection($this->pool, $retryDelay, $retryMaxAttempts, $connectionDelay, $connectConstructor);
     }
 
     /**

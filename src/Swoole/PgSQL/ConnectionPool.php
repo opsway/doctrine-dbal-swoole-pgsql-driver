@@ -41,14 +41,12 @@ final class ConnectionPool implements ConnectionPoolInterface
         if (! $this->map || ! $this->pool) {
             throw new DriverException('ConnectionPool was closed');
         }
+        if ($this->pool->isEmpty()) {
+                /** try to fill pull with new connect */
+                $this->make();
+        }
         /** @var PostgreSQL|null $connection */
         $connection = $this->pool->pop($timeout);
-        if (! $connection instanceof PostgreSQL) {
-            /** try to fill pull with new connect */
-            $this->make();
-            /** @var PostgreSQL|null $connection */
-            $connection = $this->pool->pop($timeout);
-        }
         if (! $connection instanceof PostgreSQL) {
             return [null, null];
         }

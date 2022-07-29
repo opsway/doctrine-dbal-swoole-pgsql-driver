@@ -11,8 +11,8 @@ class ConnectionStats
     public function __construct(
         public int $lastInteraction,
         public int $counter,
-        private ?int $ttl,
-        private ?int $counterLimit
+        private ?int $ttl = null,
+        private ?int $counterLimit = null,
     ) {
     }
 

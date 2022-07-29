@@ -7,6 +7,7 @@ namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 use Doctrine\DBAL\Driver\Connection as ConnectionInterface;
 use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\DBAL\ParameterType;
+use Closure;
 use OpsWay\Doctrine\DBAL\SQLParserUtils;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\ConnectionException;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException;
@@ -17,7 +18,6 @@ use WeakMap;
 
 use function defer;
 use function is_resource;
-use function sleep;
 use function strlen;
 use function substr;
 use function time;
@@ -35,6 +35,7 @@ final class Connection implements ConnectionInterface
         private int $retryDelay,
         private int $maxAttempts,
         private int $connectionDelay,
+        private ?Closure $connectConstructor = null,
     ) {
         /** @psalm-suppress PropertyTypeCoercion */
         $this->statsStorage = new WeakMap();
@@ -180,7 +181,15 @@ final class Connection implements ConnectionInterface
             $lastException = null;
             for ($i = 0; $i < $this->maxAttempts; $i++) {
                 try {
-                    [$connection, $stats] = $this->pool->get($this->connectionDelay);
+                    /**
+                     * @psalm-suppress UnnecessaryVarAnnotation
+                     * @psalm-var PostgreSQL      $connection
+                     * @psalm-var ConnectionStats $stats
+                     */
+                    [$connection, $stats] = match (true) {
+                        $this->connectConstructor === null => $this->pool->get($this->connectionDelay),
+                        default                            => [($this->connectConstructor)(), new ConnectionStats(0, 0)]
+                    };
                     if (! $connection instanceof PostgreSQL) {
                         throw new DriverException('No connect available in pull');
                     }
@@ -209,7 +218,7 @@ final class Connection implements ConnectionInterface
                     $lastException = $e instanceof DBALException
                         ? $e
                         : new ConnectionException($e->getMessage(), (string) $errCode, '', (int) $e->getCode(), $e);
-                    $this->sleep($this->retryDelay);  // Sleep s after failure
+                    Co::usleep($this->retryDelay * 1000);  // Sleep mсs after failure
                 }
             }
             if (! $connection instanceof PostgreSQL) {
@@ -229,6 +238,9 @@ final class Connection implements ConnectionInterface
 
     private function onDefer() : void
     {
+        if ($this->connectConstructor) {
+            return;
+        }
         $connection = $this->internalStorage[Co::getCid()] ?? null;
         if (! $connection instanceof PostgreSQL) {
             return;
@@ -241,16 +253,5 @@ final class Connection implements ConnectionInterface
         /** @psalm-suppress MixedArrayOffset */
         unset($this->internalStorage[Co::getCid()]);
         $this->statsStorage->offsetUnset($connection);
-    }
-
-    private function sleep(int $seconds) : void
-    {
-        if (Co::getCid() > 0) {
-            Co::sleep($seconds);
-
-            return;
-        }
-        /** @psalm-suppress ArgumentTypeCoercion */
-        sleep($seconds);
     }
 }
