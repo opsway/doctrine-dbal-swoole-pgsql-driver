@@ -20,9 +20,10 @@ $connectionParams = [
     'connectionTtl' => 60, // when connection not used this time(seconds) - it will be close (free)
     'usedTimes' => 100, // 1 connection (in pool) will be re-used maximum N queries
     'connectionDelay' => 2, // time(seconds) for waiting response from pool
+    'useConnectionPool' => true, // if false, will create new connect instead of using pool
     'retry' => [
         'maxAttempts' => 2, // if connection in pool was timeout (before use) then try re-connect
-        'delay' => 1, // after this time
+        'delay' => 1000, // delay to try fetch from pool again(milliseconds) if no connect available
     ]
 ];
 $pool = (new \OpsWay\Doctrine\DBAL\Swoole\PgSQL\ConnectionPoolFactory())($connectionParams);

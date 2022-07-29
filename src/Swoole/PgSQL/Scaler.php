@@ -15,8 +15,10 @@ class Scaler
 
     private ?int $timerId = null;
 
-    public function __construct(private ConnectionPoolInterface $pool, private int $tickFrequency = self::DOWNSCALE_TICK_FREQUENCY)
-    {
+    public function __construct(
+        private ConnectionPoolInterface $pool,
+        private int $tickFrequency = self::DOWNSCALE_TICK_FREQUENCY,
+    ) {
     }
 
     public function run() : void
@@ -37,7 +39,7 @@ class Scaler
         /** @psalm-var  PostgreSQL[] $connections */
         $connections = [];
         while ($poolLength > 0) {
-            [$connection, $connectionStats] = $this->pool->get($this->tickFrequency / 1000);
+            [$connection, $connectionStats] = $this->pool->get(1);
             /** connection never null if pool capacity > 0 */
             if (! $connection) {
                 return;
