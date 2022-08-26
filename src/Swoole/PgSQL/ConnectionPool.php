@@ -135,7 +135,7 @@ final class ConnectionPool implements ConnectionPoolInterface
         if (! $this->map || ! $this->pool) {
             return;
         }
-        if ($this->pool->capacity === $this->capacity()) {
+        if ($this->pool->capacity <= $this->capacity()) {
             return;
         }
         try {
