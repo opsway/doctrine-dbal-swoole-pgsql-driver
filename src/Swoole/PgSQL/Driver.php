@@ -10,6 +10,7 @@ use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException;
 use Swoole\Coroutine\PostgreSQL;
 
 use function array_key_exists;
+use function filter_var;
 use function implode;
 use function sprintf;
 
@@ -36,7 +37,7 @@ final class Driver extends AbstractPostgreSQLDriver
         $retryMaxAttempts   = (int) ($params['retry']['maxAttempts'] ?? 1);
         $retryDelay         = (int) ($params['retry']['delay'] ?? 0);
         $connectionDelay    = (int) ($params['connectionDelay'] ?? 0);
-        $usePool            =  filter_var($params['useConnectionPool'], FILTER_VALIDATE_BOOLEAN);
+        $usePool            = filter_var($params['useConnectionPool'], FILTER_VALIDATE_BOOLEAN);
         $connectConstructor = $usePool ? null : static fn() : PostgreSQL => self::createConnection(self::generateDSN($params));
 
         return new Connection($this->pool, $retryDelay, $retryMaxAttempts, $connectionDelay, $connectConstructor);

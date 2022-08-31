@@ -12,13 +12,14 @@ use Swoole\Coroutine\PostgreSQL;
 use Throwable;
 use WeakMap;
 
+use function gc_collect_cycles;
 use function time;
 
 final class ConnectionPool implements ConnectionPoolInterface
 {
-    private ?Channel $pool = null;
+    private Channel $chan;
     /** @psalm-var WeakMap<PostgreSQL, ConnectionStats> $map */
-    private ?WeakMap $map  = null;
+    private WeakMap $map;
 
     public function __construct(
         private Closure $constructor,
@@ -29,7 +30,7 @@ final class ConnectionPool implements ConnectionPoolInterface
         if ($this->size < 0) {
             throw new DriverException('Expected, connection pull size > 0');
         }
-        $this->pool = new Channel($this->size);
+        $this->chan = new Channel($this->size);
         /** @psalm-suppress PropertyTypeCoercion */
         $this->map = new WeakMap();
     }
@@ -37,16 +38,12 @@ final class ConnectionPool implements ConnectionPoolInterface
     /** @psalm-return array{PostgreSQL|null, ConnectionStats|null } */
     public function get(float $timeout = -1) : array
     {
-        /** Pool was closed */
-        if (! $this->map || ! $this->pool) {
-            throw new DriverException('ConnectionPool was closed');
-        }
-        if ($this->pool->isEmpty()) {
+        if ($this->chan->isEmpty()) {
                 /** try to fill pull with new connect */
                 $this->make();
         }
         /** @var PostgreSQL|null $connection */
-        $connection = $this->pool->pop($timeout);
+        $connection = $this->chan->pop($timeout);
         if (! $connection instanceof PostgreSQL) {
             return [null, null];
         }
@@ -59,46 +56,43 @@ final class ConnectionPool implements ConnectionPoolInterface
 
     public function put(PostgreSQL $connection) : void
     {
-        /** Pool was closed */
-        if (! $this->map || ! $this->pool) {
-            return;
-        }
-        if (! $this->map->offsetExists($connection)) {
-            return;
-        }
-        if ($this->pool->isFull()) {
-            $this->remove($connection);
-
-            return;
-        }
         $stats = $this->map[$connection] ?? null;
         if (! $stats || $stats->isOverdue()) {
             $this->remove($connection);
 
             return;
         }
-        $this->pool->push($connection);
+        if ($this->size <= $this->chan->length()) {
+            $this->remove($connection);
+
+            return;
+        }
+
+        /** to prevent hypothetical freeze if channel is full, will never happen but for sure */
+        if (! $this->chan->push($connection, 1)) {
+            $this->remove($connection);
+        }
     }
 
     public function close() : void
     {
-        /** Pool was closed */
-        if (! $this->map || ! $this->pool) {
-            return;
-        }
-        $this->pool->close();
-        $this->pool = null;
-        $this->map  = null;
+        $this->chan->close();
+        gc_collect_cycles();
     }
 
     public function capacity() : int
     {
-        return (int) $this->map?->count();
+        return $this->map->count();
     }
 
     public function length() : int
     {
-        return (int) $this->pool?->length();
+        return $this->chan->length();
+    }
+
+    public function stats() : array
+    {
+        return $this->chan->stats();
     }
 
     /**
@@ -121,31 +115,23 @@ final class ConnectionPool implements ConnectionPoolInterface
 
     private function remove(PostgreSQL $connection) : void
     {
-        /** Pool was closed */
-        if (! $this->map || ! $this->pool) {
-            return;
-        }
         $this->map->offsetUnset($connection);
         unset($connection);
     }
 
     private function make() : void
     {
-        /** Pool was closed */
-        if (! $this->map || ! $this->pool) {
+        if ($this->size <= $this->capacity()) {
             return;
         }
-        if ($this->pool->capacity <= $this->capacity()) {
-            return;
+        /** @var PostgreSQL $connection */
+        $connection = ($this->constructor)();
+        /** Allocate to map only after successful push(exclude chanel overflow cause of concurrency)
+         *
+         * @psalm-suppress PossiblyNullReference
+         */
+        if ($this->chan->push($connection, 1)) {
+            $this->map[$connection] = new ConnectionStats(time(), 1, $this->connectionTtl, $this->connectionUseLimit);
         }
-        try {
-            /** @var PostgreSQL $connection */
-            $connection = ($this->constructor)();
-        } catch (Throwable) {
-            throw new Exception('Could not initialize connection with constructor');
-        }
-        $this->map[$connection] = new ConnectionStats(time(), 1, $this->connectionTtl, $this->connectionUseLimit);
-        /** @psalm-suppress PossiblyNullReference */
-        $this->pool->push($connection);
     }
 }
