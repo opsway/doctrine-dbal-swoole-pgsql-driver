@@ -8,6 +8,7 @@ use Swoole\Coroutine\PostgreSQL;
 use Swoole\Timer;
 
 use function array_map;
+use function gc_collect_cycles;
 
 class Scaler
 {
@@ -48,6 +49,7 @@ class Scaler
             $poolLength--;
         }
         array_map(fn(PostgreSQL $connection) => $this->pool->put($connection), $connections);
+        gc_collect_cycles();
     }
 
     public function close() : void

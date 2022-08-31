@@ -18,4 +18,6 @@ interface ConnectionPoolInterface
     public function length() : int;
 
     public function close() : void;
+
+    public function stats() : array;
 }

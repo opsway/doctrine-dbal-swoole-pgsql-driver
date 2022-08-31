@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
+use Closure;
 use Doctrine\DBAL\Driver\Connection as ConnectionInterface;
 use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\DBAL\ParameterType;
-use Closure;
 use OpsWay\Doctrine\DBAL\SQLParserUtils;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\ConnectionException;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException;
 use Swoole\Coroutine as Co;
+use Swoole\Coroutine\Context;
 use Swoole\Coroutine\PostgreSQL;
 use Throwable;
-use WeakMap;
 
 use function defer;
 use function is_resource;
@@ -25,11 +25,6 @@ use function trim;
 
 final class Connection implements ConnectionInterface
 {
-    /** @psalm-var array<int, PostgreSQL>  */
-    private array $internalStorage = [];
-    /** @psalm-var WeakMap<PostgreSQL, ConnectionStats> $statsStorage */
-    private WeakMap $statsStorage;
-
     public function __construct(
         private ConnectionPoolInterface $pool,
         private int $retryDelay,
@@ -37,14 +32,6 @@ final class Connection implements ConnectionInterface
         private int $connectionDelay,
         private ?Closure $connectConstructor = null,
     ) {
-        /** @psalm-suppress PropertyTypeCoercion */
-        $this->statsStorage = new WeakMap();
-        /** Outside of Coroutine Co::getCid() = -1 */
-        if (Co::getCid() < 1) {
-            return;
-        }
-        /** @psalm-suppress UnusedFunctionCall */
-        defer(fn () => $this->onDefer());
     }
 
     /**
@@ -68,7 +55,7 @@ final class Connection implements ConnectionInterface
         }
         $connection = $this->getNativeConnection();
 
-        return new Statement($connection, $sql, $this->connectionStats($connection));
+        return new Statement($connection, $sql, $this->connectionStats());
     }
 
     /**
@@ -78,7 +65,7 @@ final class Connection implements ConnectionInterface
     {
         $connection = $this->getNativeConnection();
         $resource   = $connection->query($sql);
-        $stats      = $this->connectionStats($connection);
+        $stats      = $this->connectionStats();
         if ($stats instanceof ConnectionStats) {
             $stats->counter++;
         }
@@ -108,7 +95,7 @@ final class Connection implements ConnectionInterface
     {
         $connection = $this->getNativeConnection();
         $query      = $connection->query($sql);
-        $stats      = $this->connectionStats($connection);
+        $stats      = $this->connectionStats();
         if ($stats instanceof ConnectionStats) {
             $stats->counter++;
         }
@@ -176,7 +163,10 @@ final class Connection implements ConnectionInterface
 
     public function getNativeConnection() : PostgreSQL
     {
-        $connection = $this->internalStorage[Co::getCid()] ?? null;
+        $context = $this->getContext();
+        /** @psalm-suppress MixedArrayAccess, MixedAssignment */
+        [$connection] = $context[self::class] ?? [null, null];
+        /** @psalm-suppress RedundantCondition */
         if (! $connection instanceof PostgreSQL) {
             $lastException = null;
             for ($i = 0; $i < $this->maxAttempts; $i++) {
@@ -205,8 +195,10 @@ final class Connection implements ConnectionInterface
                             "Connection ping failed. Trying reconnect (attempt $i). Reason: $errCode"
                         );
                     }
-                    $this->internalStorage[Co::getCid()] = $connection;
-                    $this->statsStorage[$connection]     = $stats;
+                    $context[self::class] = [$connection, $stats];
+
+                    /** @psalm-suppress UnusedFunctionCall */
+                    defer($this->onDefer(...));
 
                     break;
                 } catch (Throwable $e) {
@@ -227,13 +219,33 @@ final class Connection implements ConnectionInterface
                     : throw new ConnectionException('Connection could not be initiated');
             }
         }
+        /** @psalm-suppress MixedArrayAccess, MixedAssignment */
+        [$connection] = $context[self::class] ?? [null];
 
-        return $this->internalStorage[Co::getCid()];
+        /** @psalm-suppress RedundantCondition */
+        if (! $connection instanceof PostgreSQL) {
+            throw new ConnectionException('Connection in context storage is corrupted');
+        }
+
+        return $connection;
     }
 
-    public function connectionStats(PostgreSQL $connection) : ?ConnectionStats
+    /** @psalm-suppress UnusedVariable, MixedArrayAccess, MixedAssignment */
+    public function connectionStats() : ?ConnectionStats
     {
-        return $this->statsStorage[$connection] ?? null;
+        [$connection, $stats] = $this->getContext()[self::class] ?? [null, null];
+
+        return $stats;
+    }
+
+    /** @psalm-suppress MixedReturnTypeCoercion */
+    private function getContext() : Context
+    {
+        $context = Co::getContext((int) Co::getCid());
+        if (! $context instanceof Context) {
+            throw new ConnectionException('Connection Co::Context unavailable');
+        }
+        return $context;
     }
 
     private function onDefer() : void
@@ -241,17 +253,18 @@ final class Connection implements ConnectionInterface
         if ($this->connectConstructor) {
             return;
         }
-        $connection = $this->internalStorage[Co::getCid()] ?? null;
+        $context = $this->getContext();
+        /** @psalm-suppress MixedArrayAccess, MixedAssignment */
+        [$connection, $stats] = $context[self::class] ?? [null, null];
+        /** @psalm-suppress RedundantCondition */
         if (! $connection instanceof PostgreSQL) {
             return;
         }
-        $stats = $this->connectionStats($connection);
+        /** @psalm-suppress TypeDoesNotContainType */
         if ($stats instanceof ConnectionStats) {
             $stats->lastInteraction = time();
         }
         $this->pool->put($connection);
-        /** @psalm-suppress MixedArrayOffset */
-        unset($this->internalStorage[Co::getCid()]);
-        $this->statsStorage->offsetUnset($connection);
+        unset($context[self::class]);
     }
 }
