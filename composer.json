@@ -28,5 +28,10 @@
     "scripts": {
         "cs-check": "phpcs",
         "cs-fix": "phpcbf"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
     }
 }

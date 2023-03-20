@@ -8,6 +8,7 @@ use Doctrine\DBAL\Driver\Result as ResultInterface;
 use Doctrine\DBAL\Driver\Statement as StatementInterface;
 use Doctrine\DBAL\ParameterType;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException as SwooleDriverException;
+use OpsWay\Doctrine\DBAL\Swoole\PostgresqlUtil;
 use Swoole\Coroutine\PostgreSQL;
 
 use function is_array;
@@ -17,15 +18,33 @@ use function uniqid;
 
 final class Statement implements StatementInterface
 {
-    private string $key;
+    private readonly object $statement;
     private array $params = [];
 
     public function __construct(private PostgreSQL $connection, string $sql, private ?ConnectionStats $stats)
     {
-        $this->key = uniqid('stmt_', true);
-        if ($this->connection->prepare($this->key, $sql) === false) {
+        $stmt = false;
+        if (PostgresqlUtil::isStatementAvailable()) {
+            $stmt = $this->connection->prepare($sql);
+        } else {
+            $key = uniqid('stmt_', true);
+            if ($this->connection->prepare($key, $sql) !== false) {
+                $stmt = new class ($this->connection, $key) {
+                    public function __construct(private readonly PostgreSQL $connection, private readonly string $key)
+                    {
+                    }
+
+                    public function execute(array $params) : mixed
+                    {
+                        return $this->connection->execute($this->key, $params);
+                    }
+                };
+            }
+        }
+        if ($stmt === false) {
             throw SwooleDriverException::fromConnection($this->connection);
         }
+        $this->statement = $stmt;
     }
 
     /**
@@ -72,15 +91,12 @@ final class Statement implements StatementInterface
             }
         }
 
-        $result = $this->connection->execute($this->key, $mergedParams);
+        $result = $this->statement->execute($mergedParams);
         if ($this->stats instanceof ConnectionStats) {
             $this->stats->counter++;
         }
-        if (! is_resource($result)) {
-            throw SwooleDriverException::fromConnection($this->connection);
-        }
 
-        return new Result($this->connection, $result);
+        return new Result($this->connection, $result, $this->statement);
     }
 
     public function errorCode() : int

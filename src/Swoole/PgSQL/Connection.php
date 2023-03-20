@@ -11,6 +11,8 @@ use Doctrine\DBAL\ParameterType;
 use OpsWay\Doctrine\DBAL\SQLParserUtils;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\ConnectionException;
 use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException;
+use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\PingException;
+use OpsWay\Doctrine\DBAL\Swoole\PostgresqlUtil;
 use Swoole\Coroutine as Co;
 use Swoole\Coroutine\Context;
 use Swoole\Coroutine\PostgreSQL;
@@ -65,16 +67,20 @@ final class Connection implements ConnectionInterface
     {
         $connection = $this->getNativeConnection();
         $resource   = $connection->query($sql);
+        $statement = null;
         $stats      = $this->connectionStats();
         if ($stats instanceof ConnectionStats) {
             $stats->counter++;
         }
-
-        if (! is_resource($resource)) {
-            throw ConnectionException::fromConnection($connection);
+        if (PostgresqlUtil::isStatementAvailable()) {
+            $statement = $resource;
+        } else {
+            if (!is_resource($resource)) {
+                throw ConnectionException::fromConnection($connection);
+            }
         }
 
-        return new Result($this->getNativeConnection(), $resource);
+        return new Result($this->getNativeConnection(), $resource, ($statement === false) ? null : $statement);
     }
 
     /**
@@ -99,7 +105,12 @@ final class Connection implements ConnectionInterface
         if ($stats instanceof ConnectionStats) {
             $stats->counter++;
         }
-
+        if (PostgresqlUtil::isStatementAvailable()) {
+            if (! $query->execute()) {
+                throw ConnectionException::fromConnection($this->getNativeConnection());
+            }
+            return (int) $query->affectedRows();
+        }
         if (! is_resource($query)) {
             throw ConnectionException::fromConnection($this->getNativeConnection());
         }
@@ -126,8 +137,9 @@ final class Connection implements ConnectionInterface
      */
     public function beginTransaction() : bool
     {
-        $this->getNativeConnection()->query('START TRANSACTION');
-
+        PostgresqlUtil::isStatementAvailable() ? $this->getNativeConnection()->query('START TRANSACTION')->execute() :
+            $this->getNativeConnection()->query('START TRANSACTION');
+        // TBD - check result
         return true;
     }
 
@@ -136,8 +148,9 @@ final class Connection implements ConnectionInterface
      */
     public function commit() : bool
     {
-        $this->getNativeConnection()->query('COMMIT');
-
+        PostgresqlUtil::isStatementAvailable() ? $this->getNativeConnection()->query('COMMIT')->execute() :
+            $this->getNativeConnection()->query('COMMIT');
+        // TBD - check result
         return true;
     }
 
@@ -146,8 +159,9 @@ final class Connection implements ConnectionInterface
      */
     public function rollBack() : bool
     {
-        $this->getNativeConnection()->query('ROLLBACK');
-
+        PostgresqlUtil::isStatementAvailable() ? $this->getNativeConnection()->query('ROLLBACK')->execute() :
+            $this->getNativeConnection()->query('ROLLBACK');
+        // TBD - check result
         return true;
     }
 
@@ -186,21 +200,21 @@ final class Connection implements ConnectionInterface
                     if (! $stats instanceof ConnectionStats) {
                         throw new DriverException('Provided connect is corrupted');
                     }
-                    /** @var resource|bool $query */
-                    $query        = $connection->query('SELECT 1');
-                    $affectedRows = is_resource($query) ? (int) $connection->affectedRows($query) : 0;
-                    if ($affectedRows !== 1) {
-                        $errCode = trim((string) $connection->errCode);
-                        throw new ConnectionException(
-                            "Connection ping failed. Trying reconnect (attempt $i). Reason: $errCode"
-                        );
-                    }
+                    $this->ping($connection, $i);
+
                     $context[self::class] = [$connection, $stats];
 
                     /** @psalm-suppress UnusedFunctionCall */
                     defer($this->onDefer(...));
 
                     break;
+                } catch (PingException) {
+                    $errCode = trim((string)$connection->errCode);
+                    $lastException = new ConnectionException(
+                        "Connection ping failed. Trying reconnect (attempt $i). Reason: $errCode"
+                    );
+                    $connection = null;
+                    Co::usleep($this->retryDelay * 1000);  // Sleep mсs after failure
                 } catch (Throwable $e) {
                     $errCode = '';
                     if ($connection instanceof PostgreSQL) {
@@ -210,7 +224,8 @@ final class Connection implements ConnectionInterface
                     $lastException = $e instanceof DBALException
                         ? $e
                         : new ConnectionException($e->getMessage(), (string) $errCode, '', (int) $e->getCode(), $e);
-                    Co::usleep($this->retryDelay * 1000);  // Sleep mсs after failure
+                    //Co::usleep($this->retryDelay * 1000);  // Sleep mсs after failure
+                    break;
                 }
             }
             if (! $connection instanceof PostgreSQL) {
@@ -238,7 +253,9 @@ final class Connection implements ConnectionInterface
         return $stats;
     }
 
-    /** @psalm-suppress MixedReturnTypeCoercion */
+    /** @psalm-suppress MixedReturnTypeCoercion
+     * @throws ConnectionException
+     */
     private function getContext() : Context
     {
         $context = Co::getContext((int) Co::getCid());
@@ -266,5 +283,27 @@ final class Connection implements ConnectionInterface
         }
         $this->pool->put($connection);
         unset($context[self::class]);
+    }
+
+    /**
+     * @throws PingException
+     */
+    public function ping(PostgreSQL $connection, int $attempt) : void
+    {
+        if (PostgresqlUtil::isStatementAvailable()) {
+            $stmt = $connection->query('SELECT 1');
+            $affectedRows = $stmt ? (int) $stmt->affectedRows() : 0;
+        } else {
+            /** @var resource|bool $query */
+            $query = $connection->query('SELECT 1');
+            $affectedRows = is_resource($query) ? (int)$connection->affectedRows($query) : 0;
+        }
+        if ($affectedRows !== 1) {
+            throw new PingException();
+            //$errCode = trim((string) $connection->errCode);
+            //throw new ConnectionException(
+            //    "Connection ping failed. Trying reconnect (attempt $attempt). Reason: $errCode"
+            //);
+        }
     }
 }
