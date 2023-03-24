@@ -42,7 +42,7 @@ class Result implements ResultInterface
          * @psalm-var list<mixed>|false $result
          * @psalm-suppress UndefinedConstant
          */
-        $result = ($this->statement) ? $this->statement->fetchArray(null, \OpenSwoole\Coroutine\PostgreSQL::PGSQL_NUM)
+        $result = ($this->statement) ? $this->statement->fetchArray(null, OPENSWOOLE_PGSQL_NUM)
             : $this->connection->fetchArray($this->result, null, OPENSWOOLE_PGSQL_NUM);
 
         return $result;
