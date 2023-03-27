@@ -106,7 +106,7 @@ final class Connection implements ConnectionInterface
             $stats->counter++;
         }
         if (PostgresqlUtil::isStatementAvailable()) {
-            if (! $query->execute()) {
+            if ($query === false) {
                 throw ConnectionException::fromConnection($this->getNativeConnection());
             }
             return (int) $query->affectedRows();
