@@ -42,7 +42,6 @@ class Cursor
         private bool $withHold = false,
     ) {
         $this->cursorName = $this->connection->quoteIdentifier(uniqid('cursor_'));
-        Assertion::isInstanceOf($this->connection->getDriver(), Driver::class);
     }
 
     public function getQuery(int $count = 1, string $direction = self::DIRECTION_FORWARD) : string
