@@ -195,7 +195,7 @@ final class Connection implements ConnectionInterface
                         default                            => [($this->connectConstructor)(), new ConnectionStats(0, 0)]
                     };
                     if (! $connection instanceof PostgreSQL) {
-                        throw new DriverException('No connect available in pull');
+                        throw new ConnectionException("No connect available in pull (attempt $i)");
                     }
                     if (! $stats instanceof ConnectionStats) {
                         throw new DriverException('Provided connect is corrupted');
@@ -215,6 +215,9 @@ final class Connection implements ConnectionInterface
                     );
                     $connection = null;
                     Co::usleep($this->retryDelay * 1000);  // Sleep mсs after failure
+                } catch (ConnectionException $e) {
+                    $lastException = $e;
+                    Co::usleep($this->retryDelay * 1000);
                 } catch (Throwable $e) {
                     $errCode = '';
                     if ($connection instanceof PostgreSQL) {
