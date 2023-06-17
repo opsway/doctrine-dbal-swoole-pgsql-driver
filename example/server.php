@@ -10,10 +10,14 @@ use Swoole\Http\Response;
 require_once 'vendor/autoload.php';
 
 $connectionParams = [
-    'dbname' => 'postgres',
-    'user' => 'postgres',
-    'password' => 'postgres',
-    'host' => 'localhost',
+//    'dbname' => 'postgres',
+//    'user' => 'postgres',
+//    'password' => 'postgres',
+//    'host' => 'localhost',
+    'dbname' => 'mydb',
+    'user' => 'user',
+    'password' => 'secret',
+    'host' => 'dbhost',
     'driverClass' => \OpsWay\Doctrine\DBAL\Swoole\PgSQL\Driver::class,
     'poolSize' => 5, // MAX count connections in one pool
     'tickFrequency' => 60000, // when need check possibilities downscale (close) opened connection to DB in pools
