@@ -10,6 +10,10 @@ use Swoole\Http\Response;
 require_once 'vendor/autoload.php';
 
 $connectionParams = [
+//    'dbname' => 'postgres',
+//    'user' => 'postgres',
+//    'password' => 'postgres',
+//    'host' => 'localhost',
     'dbname' => 'mydb',
     'user' => 'user',
     'password' => 'secret',

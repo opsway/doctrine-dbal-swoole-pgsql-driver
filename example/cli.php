@@ -6,10 +6,10 @@ declare(strict_types=1);
 require_once 'vendor/autoload.php';
 
 $connectionParams = [
-    'dbname' => 'mydb',
-    'user' => 'user',
-    'password' => 'secret',
-    'host' => 'dbhost',
+    'dbname' => 'postgres',
+    'user' => 'postgres',
+    'password' => 'postgres',
+    'host' => 'localhost',
     'driverClass' => \OpsWay\Doctrine\DBAL\Swoole\PgSQL\Driver::class,
     'poolSize' => 5, // MAX count connections in one pool
     'tickFrequency' => 60000, // when need check possibilities downscale (close) opened connection to DB in pools
@@ -29,7 +29,7 @@ $configuration->setMiddlewares(
 );
 $connFactory = static fn() => \Doctrine\DBAL\DriverManager::getConnection($connectionParams, $configuration);
 
-Co\run(function () use ($connFactory) {
+co::run(function () use ($connFactory) {
     for ($i = 1; $i <= 5; $i++) { // get 5 connection and make 5 async calls (2 SQL queries in each connection)
         go(static function () use ($connFactory, $i) {
             $conn = $connFactory();
@@ -43,4 +43,3 @@ Co\run(function () use ($connFactory) {
     // If repeat this again 50 times then each 5 connection will have same connection to DB by 100 queries count
     // 500 SQL for 50sec (instead of 250sec)
 });
-
