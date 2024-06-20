@@ -11,9 +11,7 @@ use OpsWay\Doctrine\DBAL\Swoole\PgSQL\Exception\DriverException as SwooleDriverE
 use OpsWay\Doctrine\DBAL\Swoole\PostgresqlUtil;
 use Swoole\Coroutine\PostgreSQL;
 
-use function is_array;
 use function is_bool;
-use function is_resource;
 use function uniqid;
 
 final class Statement implements StatementInterface
@@ -49,49 +47,19 @@ final class Statement implements StatementInterface
 
     /**
      * {@inheritdoc}
-     *
-     * @param int|string $param
-     * @param mixed      $value
-     * @param int        $type
      */
-    public function bindValue($param, $value, $type = ParameterType::STRING) : bool
+    public function bindValue(int|string $param, mixed $value, ParameterType $type = ParameterType::STRING) : void
     {
         $this->params[$param] = $this->escapeValue($value, $type);
-
-        return true;
     }
 
     /**
-     * {@inheritdoc}
-     *
-     * @param int|string $param
-     * @param mixed      $variable
-     * @param int        $type
-     * @param int|null   $length
-     */
-    public function bindParam($param, &$variable, $type = ParameterType::STRING, $length = null) : bool
-    {
-        return $this->bindValue($param, $variable, $type);
-    }
-
-    /**
-     * @param mixed|null $params
      * @throws SwooleDriverException
      * @psalm-suppress ImplementedReturnTypeMismatch
      */
-    public function execute($params = []) : ResultInterface
+    public function execute() : ResultInterface
     {
-        $mergedParams = $this->params;
-        if (! empty($params)) {
-            $params = is_array($params) ? $params : [$params];
-            /** @psalm-var mixed|null $param */
-            foreach ($params as $key => $param) {
-                /** @psalm-suppress MixedAssignment */
-                $mergedParams[$key] = $this->escapeValue($param);
-            }
-        }
-
-        $result = $this->statement->execute($mergedParams);
+        $result = $this->statement->execute($this->params);
         if ($this->stats instanceof ConnectionStats) {
             $this->stats->counter++;
         }
@@ -99,17 +67,7 @@ final class Statement implements StatementInterface
         return new Result($this->connection, $result, $this->statement);
     }
 
-    public function errorCode() : int
-    {
-        return (int) $this->connection->errCode;
-    }
-
-    public function errorInfo() : string
-    {
-        return (string) $this->connection->error;
-    }
-
-    private function escapeValue(mixed $value, int $type = ParameterType::STRING) : ?string
+    private function escapeValue(mixed $value, ParameterType $type = ParameterType::STRING) : ?string
     {
         if ($value !== null && (is_bool($value) || $type === ParameterType::BOOLEAN)) {
             return $value ? 'TRUE' : 'FALSE';

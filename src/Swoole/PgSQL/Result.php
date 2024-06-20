@@ -33,7 +33,7 @@ class Result implements ResultInterface
     }
 
     /** {@inheritdoc} */
-    public function fetchNumeric() : array|bool
+    public function fetchNumeric() : array|false
     {
         if ($this->result === null) {
             throw new SwooleDriverException('No result set available');
@@ -49,7 +49,7 @@ class Result implements ResultInterface
     }
 
     /** {@inheritdoc} */
-    public function fetchAssociative() : array|bool
+    public function fetchAssociative() : array|false
     {
         if ($this->result === null) {
             throw new SwooleDriverException('No result set available');
@@ -110,7 +110,7 @@ class Result implements ResultInterface
     }
 
     /** {@inheritdoc} */
-    public function rowCount() : int
+    public function rowCount() : int|string
     {
         if ($this->result === null) {
             throw new SwooleDriverException('No result set available');
