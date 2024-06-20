@@ -85,11 +85,8 @@ final class Connection implements ConnectionInterface
 
     /**
      * {@inheritdoc}
-     *
-     * @param mixed $value
-     * @param int   $type
      */
-    public function quote($value, $type = ParameterType::STRING) : string
+    public function quote(string $value) : string
     {
         return "'" . (string) $this->getNativeConnection()->escape($value) . "'";
     }
@@ -97,7 +94,7 @@ final class Connection implements ConnectionInterface
     /**
      * {@inheritdoc}
      */
-    public function exec(string $sql) : int
+    public function exec(string $sql) : int|string
     {
         $connection = $this->getNativeConnection();
         $query      = $connection->query($sql);
@@ -120,59 +117,37 @@ final class Connection implements ConnectionInterface
 
     /**
      * {@inheritdoc}
-     *
-     * @param string|null $name
      */
-    public function lastInsertId($name = null) : string
+    public function lastInsertId() : int|string
     {
-        $result = ! empty($name)
-            ? $this->query('SELECT CURRVAL(\'' . $name . '\')')
-            : $this->query('SELECT LASTVAL()');
-
-        return (string) $result->fetchOne();
+        return $this->query('SELECT LASTVAL()')->fetchOne();
     }
 
     /**
      * {@inheritdoc}
      */
-    public function beginTransaction() : bool
+    public function beginTransaction() : void
     {
         PostgresqlUtil::isStatementAvailable() ? $this->getNativeConnection()->query('START TRANSACTION')->execute() :
             $this->getNativeConnection()->query('START TRANSACTION');
-        // TBD - check result
-        return true;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function commit() : bool
+    public function commit() : void
     {
         PostgresqlUtil::isStatementAvailable() ? $this->getNativeConnection()->query('COMMIT')->execute() :
             $this->getNativeConnection()->query('COMMIT');
-        // TBD - check result
-        return true;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function rollBack() : bool
+    public function rollBack() : void
     {
         PostgresqlUtil::isStatementAvailable() ? $this->getNativeConnection()->query('ROLLBACK')->execute() :
             $this->getNativeConnection()->query('ROLLBACK');
-        // TBD - check result
-        return true;
-    }
-
-    public function errorCode() : int
-    {
-        return (int) $this->getNativeConnection()->errCode;
-    }
-
-    public function errorInfo() : string
-    {
-        return (string) $this->getNativeConnection()->error;
     }
 
     public function getNativeConnection() : PostgreSQL
@@ -308,5 +283,10 @@ final class Connection implements ConnectionInterface
             //    "Connection ping failed. Trying reconnect (attempt $attempt). Reason: $errCode"
             //);
         }
+    }
+
+    public function getServerVersion() : string
+    {
+        return (string) $this->query('SELECT version()')->fetchOne();
     }
 }

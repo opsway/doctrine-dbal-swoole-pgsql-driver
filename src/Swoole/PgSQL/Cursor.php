@@ -6,7 +6,10 @@ namespace OpsWay\Doctrine\DBAL\Swoole\PgSQL;
 
 use Assert\Assertion;
 use BadMethodCallException;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
+use Doctrine\DBAL\Types\Type;
 
 use function in_array;
 use function sprintf;
@@ -32,7 +35,7 @@ class Cursor
     private bool $isOpen = false;
 
     /**
-     * @psalm-param array<array-key,int|string|null> $paramsTypes
+     * @psalm-param array<array-key, string|Type|ParameterType|ArrayParameterType> $paramsTypes
      */
     public function __construct(
         private Connection $connection,
